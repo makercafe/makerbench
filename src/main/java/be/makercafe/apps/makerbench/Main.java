@@ -45,7 +45,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
-import be.makercafe.apps.makerbench.editors.EditorJFXScad;
+import be.makercafe.apps.makerbench.editors.JFXScadEditor;
 import be.makercafe.apps.makerbench.resourceview.ResourceTreeCell;
 import be.makercafe.apps.makerbench.resourceview.ResourceTreeItem;
 
@@ -63,13 +63,15 @@ public class Main extends Application {
 
 	@Override
 	public void start(Stage primaryStage) {
-		final ContextMenu rootContextMenu = ContextMenuBuilder.create()
-				.items(MenuItemBuilder.create().text("Menu Item").onAction(new EventHandler<ActionEvent>() {
-					@Override
-					public void handle(ActionEvent arg0) {
-						System.out.println("Menu Item Clicked!");
-					}
-				}).build()).build();
+		final ContextMenu rootContextMenu = ContextMenuBuilder
+				.create()
+				.items(MenuItemBuilder.create().text("Menu Item")
+						.onAction(new EventHandler<ActionEvent>() {
+							@Override
+							public void handle(ActionEvent arg0) {
+								System.out.println("Menu Item Clicked!");
+							}
+						}).build()).build();
 		this.stage = primaryStage;
 		BorderPane p = new BorderPane();
 
@@ -83,8 +85,8 @@ public class Main extends Application {
 
 				if (mouseEvent.getClickCount() == 2) {
 					@SuppressWarnings("unchecked")
-					ResourceTreeItem<String> item = (ResourceTreeItem<String>) viewer.getSelectionModel()
-							.getSelectedItem();
+					ResourceTreeItem<String> item = (ResourceTreeItem<String>) viewer
+							.getSelectionModel().getSelectedItem();
 					System.out.println("Selected Text : " + item.getValue());
 
 					createAndAttachTab(item.getValue(), item.getPath(), null);
@@ -124,7 +126,9 @@ public class Main extends Application {
 		p.setCenter(splitpane);
 
 		Scene scene = new Scene(p, 800, 600);
-		scene.getStylesheets().add(this.getClass().getResource("/styles/java-keywords.css").toExternalForm());
+		scene.getStylesheets().add(
+				this.getClass().getResource("/styles/java-keywords.css")
+						.toExternalForm());
 
 		primaryStage.setResizable(true);
 		primaryStage.setTitle("Makerbench");
@@ -190,7 +194,8 @@ public class Main extends Application {
 
 		root.setExpanded(true);
 
-		root.getChildren().addAll(new ResourceTreeItem<>("Item 1"), new ResourceTreeItem<>("Item 2"),
+		root.getChildren().addAll(new ResourceTreeItem<>("Item 1"),
+				new ResourceTreeItem<>("Item 2"),
 				new ResourceTreeItem<>("Item 3"));
 		return root;
 	}
@@ -218,7 +223,8 @@ public class Main extends Application {
 		MenuItem newProject = new MenuItem("New");
 		// newProject.setGraphic((new Glyph("FontAwesome",
 		// FontAwesome.Glyph.SAVE)).color(Color.BLACK));
-		newProject.setAccelerator(new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN));
+		newProject.setAccelerator(new KeyCodeCombination(KeyCode.P,
+				KeyCombination.CONTROL_DOWN));
 		newProject.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -230,7 +236,8 @@ public class Main extends Application {
 		MenuItem importProject = new MenuItem("Import");
 		// importProject.setGraphic((new Glyph("FontAwesome",
 		// FontAwesome.Glyph.SAVE)).color(Color.BLACK));
-		importProject.setAccelerator(new KeyCodeCombination(KeyCode.I, KeyCombination.CONTROL_DOWN));
+		importProject.setAccelerator(new KeyCodeCombination(KeyCode.I,
+				KeyCombination.CONTROL_DOWN));
 		importProject.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -242,7 +249,8 @@ public class Main extends Application {
 		MenuItem deleteProject = new MenuItem("Delete");
 		// importProject.setGraphic((new Glyph("FontAwesome",
 		// FontAwesome.Glyph.SAVE)).color(Color.BLACK));
-		deleteProject.setAccelerator(new KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN));
+		deleteProject.setAccelerator(new KeyCodeCombination(KeyCode.D,
+				KeyCombination.CONTROL_DOWN));
 		deleteProject.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -251,7 +259,8 @@ public class Main extends Application {
 
 			}
 		});
-		projectMenu.getItems().addAll(openProject, newProject, importProject, deleteProject);
+		projectMenu.getItems().addAll(openProject, newProject, importProject,
+				deleteProject);
 		bar.getMenus().add(projectMenu);
 		return bar;
 	}
@@ -259,10 +268,14 @@ public class Main extends Application {
 	private Tab createAndAttachTab(String text, Path path, File item) {
 		Tab t = null;
 		Map<String, String> map = new HashMap<String, String>();
-		map.put("path", path.toFile().getAbsolutePath());
+		if (path != null) {
+			map.put("path", path.toFile().getAbsolutePath());
+		} else {
+			map.put("path", "noname.txt");
+		}
 		// We should lookup the type of editor here.
 
-		EditorJFXScad editor = new EditorJFXScad(text,path);
+		JFXScadEditor editor = new JFXScadEditor(text, path);
 		t = editor.getTab();
 		// Hookup the userdata
 		t.setUserData(map);
@@ -277,9 +290,11 @@ public class Main extends Application {
 		return root;
 	}
 
-	private ResourceTreeItem<String> addItem(ResourceTreeItem<String> parent, File file) {
+	private ResourceTreeItem<String> addItem(ResourceTreeItem<String> parent,
+			File file) {
 		if (file.isDirectory()) {
-			ResourceTreeItem<String> folder = new ResourceTreeItem<>(file.getName(), file.toPath());
+			ResourceTreeItem<String> folder = new ResourceTreeItem<>(
+					file.getName(), file.toPath());
 			parent.getChildren().add(folder);
 			try {
 				List<File> files = Arrays.asList(file.listFiles());
@@ -292,7 +307,8 @@ public class Main extends Application {
 			}
 
 		} else {
-			ResourceTreeItem<String> fileItem = new ResourceTreeItem<>(file.getName(), file.toPath());
+			ResourceTreeItem<String> fileItem = new ResourceTreeItem<>(
+					file.getName(), file.toPath());
 			parent.getChildren().add(fileItem);
 		}
 		return parent;
