@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.commons.io.FileUtils;
 
@@ -21,6 +22,8 @@ import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ContextMenuBuilder;
 import javafx.scene.control.Menu;
@@ -32,6 +35,7 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -70,8 +74,12 @@ public class Main extends Application {
 							@Override
 							public void handle(ActionEvent arg0) {
 								System.out.println("Menu Item Clicked!");
+								ResourceTreeItem<String> item = (ResourceTreeItem<String>) viewer
+										.getSelectionModel().getSelectedItem();
+								System.out.println("Selected resource item : " + item.getValue());
 							}
 						}).build()).build();
+		
 		this.stage = primaryStage;
 		BorderPane p = new BorderPane();
 
@@ -94,16 +102,17 @@ public class Main extends Application {
 
 			}
 		});
-		viewer.setCellFactory(new Callback<TreeView<String>, TreeCell<String>>() {
-
-			@Override
-			public TreeCell<String> call(TreeView<String> arg0) {
-				// custom tree cell that defines a context menu for the root
-				// tree item
-				return new ResourceTreeCell();
-			}
-		});
-		viewer.setEditable(true);
+		viewer.setContextMenu(rootContextMenu);
+//		viewer.setCellFactory(new Callback<TreeView<String>, TreeCell<String>>() {
+//
+//			@Override
+//			public TreeCell<String> call(TreeView<String> arg0) {
+//				// custom tree cell that defines a context menu for the root
+//				// tree item
+//				return new ResourceTreeCell();
+//			}
+//		});
+		viewer.setEditable(false);
 		viewer.setShowRoot(false);
 
 		// p.setLeft(viewer);
@@ -135,52 +144,7 @@ public class Main extends Application {
 		primaryStage.setScene(scene);
 		primaryStage.show();
 
-		// // Custom dialog
-		// Dialog<PhoneBook> dialog = new Dialog<>();
-		// String titleTxt="title";
-		// dialog.setTitle(titleTxt);
-		// dialog.setHeaderText("This is a dialog. Enter info and \n" +
-		// "press Okay (or click title bar 'X' for cancel).");
-		// dialog.setResizable(true);
-		//
-		// // Widgets
-		// Label label1 = new Label("Name: ");
-		// Label label2 = new Label("Phone: ");
-		// TextField text1 = new TextField();
-		// TextField text2 = new TextField();
-		//
-		// // Create layout and add to dialog
-		// GridPane grid = new GridPane();
-		// grid.setAlignment(Pos.CENTER);
-		// grid.setHgap(10);
-		// grid.setVgap(10);
-		// grid.setPadding(new Insets(20, 35, 20, 35));
-		// grid.add(label1, 1, 1); // col=1, row=1
-		// grid.add(text1, 2, 1);
-		// grid.add(label2, 1, 2); // col=1, row=2
-		// grid.add(text2, 2, 2);
-		// dialog.getDialogPane().setContent(grid);
-		//
-		// // Add button to dialog
-		// ButtonType buttonTypeOk = new ButtonType("Okay", ButtonData.OK_DONE);
-		// dialog.getDialogPane().getButtonTypes().add(buttonTypeOk );
-		//
-		// // Result converter for dialog
-		// dialog.setResultConverter(new Callback<ButtonType, PhoneBook>() {
-		// @Override
-		// public PhoneBook call(ButtonType b) {
-		//
-		// if (b == buttonTypeOk) {
-		//
-		// return new PhoneBook(text1.getText(), text2.getText());
-		// }
-		//
-		// return null;
-		// }
-		// });
-		//
-		// // Show dialog
-		// Optional<PhoneBook> result = dialog.showAndWait();
+
 	}
 
 	/**
@@ -220,22 +184,30 @@ public class Main extends Application {
 
 			}
 		});
-		MenuItem newProject = new MenuItem("New");
-		// newProject.setGraphic((new Glyph("FontAwesome",
-		// FontAwesome.Glyph.SAVE)).color(Color.BLACK));
-		newProject.setAccelerator(new KeyCodeCombination(KeyCode.P,
-				KeyCombination.CONTROL_DOWN));
-		newProject.setOnAction(new EventHandler<ActionEvent>() {
+		Menu newProject = new Menu("New");
+
+		
+		MenuItem newFolder = new MenuItem("Folder...");
+		newFolder.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				System.out.println("New");
-
+				TextInputDialog dialog = new TextInputDialog("my_project_folder");
+				dialog.setTitle("New folder");
+				dialog.setHeaderText("Create a new folder");
+				dialog.setContentText("Folder name:");
+				Optional<String> result = dialog.showAndWait();
+				if (result.isPresent()){
+					String homeDir = System.getProperty("user.home");
+					
+				    System.out.println("Folder name: " + result.get());
+				    System.out.println("User home: " + homeDir);
+				}
 			}
 		});
+		newProject.getItems().add(newFolder);
+		
 		MenuItem importProject = new MenuItem("Import");
-		// importProject.setGraphic((new Glyph("FontAwesome",
-		// FontAwesome.Glyph.SAVE)).color(Color.BLACK));
 		importProject.setAccelerator(new KeyCodeCombination(KeyCode.I,
 				KeyCombination.CONTROL_DOWN));
 		importProject.setOnAction(new EventHandler<ActionEvent>() {
@@ -247,8 +219,6 @@ public class Main extends Application {
 			}
 		});
 		MenuItem deleteProject = new MenuItem("Delete");
-		// importProject.setGraphic((new Glyph("FontAwesome",
-		// FontAwesome.Glyph.SAVE)).color(Color.BLACK));
 		deleteProject.setAccelerator(new KeyCodeCombination(KeyCode.D,
 				KeyCombination.CONTROL_DOWN));
 		deleteProject.setOnAction(new EventHandler<ActionEvent>() {
@@ -261,7 +231,24 @@ public class Main extends Application {
 		});
 		projectMenu.getItems().addAll(openProject, newProject, importProject,
 				deleteProject);
-		bar.getMenus().add(projectMenu);
+		
+		Menu helpMenu = new Menu("Help");
+		
+		MenuItem aboutItem = new MenuItem("About");
+		aboutItem.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				Alert alert = new Alert(AlertType.INFORMATION);
+				alert.setTitle("Information Dialog");
+				alert.setHeaderText("About makerbench");
+				alert.setContentText("Makerbench is an open source IDE for designing and manufacturing objects and code.\nWritten by Luc De pauw\n\nUses opensource libraries from the next projects:\n-RichtextFX by Tomas Mikula\n-JCSG by Michael Hoffer\n-ControlsFX by FXexperience.com");
+				alert.showAndWait();
+			}
+		});
+
+		helpMenu.getItems().add(aboutItem);
+		bar.getMenus().addAll(projectMenu,helpMenu);
 		return bar;
 	}
 
@@ -321,24 +308,6 @@ public class Main extends Application {
 	public static void main(String[] args) {
 		launch(args);
 	}
-
-	// private class PhoneBook {
-	//
-	// private String name;
-	// private String phone;
-	//
-	// PhoneBook(String s1, String s2) {
-	//
-	// name = s1;
-	// phone = s2;
-	// }
-	//
-	// @Override
-	// public String toString() {
-	//
-	// return (name + ", " + phone);
-	// }
-	// }
 
 	public static class Console extends OutputStream {
 

@@ -288,7 +288,7 @@ public class JFXScadEditor extends Editor {
 	 * @return
 	 */
 
-	public ToolBar createToolBar() {
+	private ToolBar createToolBar() {
 
 		ToolBar toolBar = new ToolBar();
 		toolBar.setOrientation(Orientation.HORIZONTAL);
@@ -338,7 +338,7 @@ public class JFXScadEditor extends Editor {
 
 	}
 
-	public void handleSaveButton(ActionEvent event) {
+	private void handleSaveButton(ActionEvent event) {
 		System.out.println("Event: " + event.getSource());
 		@SuppressWarnings("unchecked")
 		Map<String, String> map = (Map<String, String>) this.getTab()
@@ -479,10 +479,7 @@ public class JFXScadEditor extends Editor {
 			String code = IOUtils.toString(
 					this.getClass().getResourceAsStream(
 							exampleSourceCode + ".jfxscad"), "UTF-8");
-//			Logger.getLogger(this.getClass().getName()).log(Level.INFO,
-//					"code: " + code);
-			this.codeArea.appendText(code);
-			
+			this.codeArea.replaceText(code);			
 		} catch (IOException ex) {
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
 					"Unable to load example source code: " + exampleSourceCode,
