@@ -84,13 +84,11 @@ public class JFXScadEditor extends Editor {
 
 	private final Group viewGroup;
 
-	private CodeArea codeArea;
+	private CodeArea caCodeArea;
 
 	private boolean autoCompile = false;
 
 	private CSG csgObject;
-
-	private TextArea logView;
 
 	private BorderPane editorContainer;
 
@@ -109,11 +107,11 @@ public class JFXScadEditor extends Editor {
 		this.editorContainer = new BorderPane();
 		this.viewContainer = new Pane();
 
-		this.codeArea = new CodeArea("");
-		this.codeArea.setEditable(true);
-		this.codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
-		this.codeArea.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		this.codeArea.textProperty()
+		this.caCodeArea = new CodeArea("");
+		this.caCodeArea.setEditable(true);
+		this.caCodeArea.setParagraphGraphicFactory(LineNumberFactory.get(caCodeArea));
+		this.caCodeArea.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+		this.caCodeArea.textProperty()
 				.addListener(
 						(ov, oldText, newText) -> {
 							Matcher matcher = KEYWORD_PATTERN.matcher(newText);
@@ -129,11 +127,11 @@ public class JFXScadEditor extends Editor {
 							}
 							spansBuilder.add(Collections.emptyList(),
 									newText.length() - lastKwEnd);
-							codeArea.setStyleSpans(0, spansBuilder.create());
+							caCodeArea.setStyleSpans(0, spansBuilder.create());
 						});
 
 		EventStream<Change<String>> textEvents = EventStreams
-				.changesOf(codeArea.textProperty());
+				.changesOf(caCodeArea.textProperty());
 
 		textEvents.reduceSuccessions((a, b) -> b, Duration.ofMillis(3000))
 				.subscribe(code -> {
@@ -143,18 +141,16 @@ public class JFXScadEditor extends Editor {
 				});
 
 		if (path == null) {
-			this.codeArea.replaceText("CSG cube = new Cube(2).toCSG()\n"
+			this.caCodeArea.replaceText("CSG cube = new Cube(2).toCSG()\n"
 					+ "CSG sphere = new Sphere(1.25).toCSG()\n" + "\n"
 					+ "cube.difference(sphere)");
 		} else {
 			try {
-				this.codeArea.replaceText("CSG cube = new Cube(2).toCSG()\n"
-						+ "CSG sphere = new Sphere(1.25).toCSG()\n" + "\n"
-						+ "cube.difference(sphere)" + "/*\n"
-						+ FileUtils.readFileToString(path.toFile()) + "*/\n");
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				this.caCodeArea.replaceText(
+						 FileUtils.readFileToString(path.toFile()));
+			} catch (IOException ex) {
+				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error reading file.",
+						ex);
 			}
 
 		}
@@ -172,7 +168,7 @@ public class JFXScadEditor extends Editor {
 
 		viewContainer.getChildren().add(subScene);
 
-		SplitPane editorPane = new SplitPane(codeArea, viewContainer);
+		SplitPane editorPane = new SplitPane(caCodeArea, viewContainer);
 		editorPane.setOrientation(Orientation.HORIZONTAL);
 		BorderPane rootPane = new BorderPane();
 
@@ -186,16 +182,12 @@ public class JFXScadEditor extends Editor {
 
 	private void setCode(String code) {
 	//	this.codeArea.clear();
-		this.codeArea.replaceText(code);
-		
+		this.caCodeArea.replaceText(code);
+
 	}
 
 	private String getCode() {
-		return this.codeArea.getText();
-	}
-
-	private void clearLog() {
-		logView.setText("");
+		return this.caCodeArea.getText();
 	}
 
 	private void compile(String code) {
@@ -234,7 +226,7 @@ public class JFXScadEditor extends Editor {
 				setMeshScale(meshContainer, viewContainer.getBoundsInLocal(),
 						meshView);
 
-				PhongMaterial m = new PhongMaterial(Color.RED);
+				PhongMaterial m = new PhongMaterial(Color.GREEN);
 
 				meshView.setCullFace(CullFace.NONE);
 
@@ -256,11 +248,11 @@ public class JFXScadEditor extends Editor {
 				viewGroup.getChildren().add(meshView);
 
 			} else {
-				System.out.println(">> no CSG object returned :(");
+				Logger.getLogger(this.getClass().getName()).log(Level.INFO, "No CSG object returned");
 			}
 
 		} catch (Throwable ex) {
-			ex.printStackTrace(System.err);
+			Logger.getLogger(this.getClass().getName()).log(Level.INFO, "Unsuspected xception", ex);
 		}
 	}
 
@@ -284,7 +276,7 @@ public class JFXScadEditor extends Editor {
 
 	/**
 	 * Creates the toolBar for the editor.
-	 * 
+	 *
 	 * @return
 	 */
 
@@ -345,10 +337,14 @@ public class JFXScadEditor extends Editor {
 				.getUserData();
 		String path = map.get("path");
 		try {
-			FileUtils.writeStringToFile(new File(path), codeArea.getText());
+			FileUtils.writeStringToFile(new File(path), caCodeArea.getText());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Unable to save file.");
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setTitle("Oeps an error occured");
+			alert.setHeaderText("Cannot save file. There went something wrong writing the file.");
+			alert.setContentText("Please verify that your file is not read only, is not locked by other user or program, you have enough diskspace.");
+			alert.showAndWait();
 		}
 	}
 
@@ -479,7 +475,7 @@ public class JFXScadEditor extends Editor {
 			String code = IOUtils.toString(
 					this.getClass().getResourceAsStream(
 							exampleSourceCode + ".jfxscad"), "UTF-8");
-			this.codeArea.replaceText(code);			
+			this.caCodeArea.replaceText(code);
 		} catch (IOException ex) {
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
 					"Unable to load example source code: " + exampleSourceCode,
@@ -493,10 +489,6 @@ public class JFXScadEditor extends Editor {
 
 	public void setToolbar(ToolBar toolBar) {
 		this.toolBar = toolBar;
-	}
-
-	public TextArea getLogView() {
-		return logView;
 	}
 
 }

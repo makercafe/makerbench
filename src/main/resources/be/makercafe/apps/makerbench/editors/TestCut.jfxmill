@@ -1,0 +1,72 @@
+ mc = new Millcrum();
+         // set the surface dimensions for the viewer
+        mc.surface(1000,600);
+        // create a 50mm x 50mm square
+        // the name is not required, but it will display on the canvas and in the gcode comments
+         //   var rect = {type:'rect',xLen:50,yLen:50,name:'50mm square'};
+
+        MillObject mo = new MillObject();
+        mo.setType("rect");
+        mo.setName("Rectangle");
+        mo.setxLen(100);
+        mo.setyLen(200);
+        mo.setCornerRadius(10);
+        mc.cut(Millcrum.OUTSIDE, mo, 8, new Point2D(0,0), null);
+        mc.cut(Millcrum.INSIDE, mo, 8, new Point2D(100,100), null);
+
+        mo.getPoints().add(new MillPoint(0,0));
+        mo.getPoints().add(new MillPoint(100,0));
+        mo.getPoints().add(new MillPoint(150,50));
+        mo.getPoints().add(new MillPoint(100,100));
+        mo.getPoints().add(new MillPoint(0,100));
+        mo.setType("polygon");
+        mo.setName("Polygon");
+        mc.cut(Millcrum.INSIDE, mo, 8, new Point2D(200,200), null);
+
+        mo.getPoints().clear();
+        mo.getPoints().add(new MillPoint(0,0));
+        mo.getPoints().add(new MillPoint(100,0));
+        MillPoint arc = new MillPoint();
+        arc.setType("arc");
+        arc.setRadius(50);
+        arc.setStartDegree(270);
+        arc.setEndDegree(90);
+        mo.getPoints().add(arc);
+        mo.getPoints().add(new MillPoint(0,100));
+        mo.setType("polygon");
+        mo.setName("Polygon");
+        mc.cut(Millcrum.INSIDE, mo, 8, new Point2D(300,300), null);
+
+        MillPoint bezier = new MillPoint();
+        bezier.setType("cubicBezier");
+        bezier.getPoints().add(new MillPoint(100,100));
+        bezier.getPoints().add(new MillPoint(100,80));
+        bezier.getPoints().add(new MillPoint(50,0));
+        bezier.getPoints().add(new MillPoint(0,0));
+
+        mo.getPoints().clear();
+        mo.getPoints().add(new MillPoint(0,0));
+        mo.getPoints().add(new MillPoint(100,0));
+        mo.getPoints().add(new MillPoint(100,100));
+        mo.getPoints().add(bezier);
+        mo.setType("polygon");
+        mo.setName("Polygon");
+        mc.cut(Millcrum.CENTER_ON_PATH, mo, 8, new Point2D(350,350), null);
+
+        mo.setType("rect");
+        mo.setName("RectanglePocket");
+        mo.setxLen(100);
+        mo.setyLen(150);
+        mo.setCornerRadius(0);
+        mo.getPoints().clear();
+        mc.cut(Millcrum.POCKET, mo, 4, new Point2D(200,0), null);
+
+        mo.setType("circle");
+        mo.setName("CirclePocket");
+        mo.setxLen(0);
+        mo.setyLen(0);
+        mo.setCornerRadius(0);
+        mo.setRadius(50);
+        mo.getPoints().clear();
+        mc.cut(Millcrum.POCKET, mo, 4, new Point2D(384,100), null);
+        return mc;
