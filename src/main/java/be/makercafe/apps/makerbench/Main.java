@@ -24,6 +24,7 @@ import be.makercafe.apps.makerbench.editors.Editor;
 import be.makercafe.apps.makerbench.editors.JFXScadEditor;
 import be.makercafe.apps.makerbench.editors.JFXMillEditor;
 import be.makercafe.apps.makerbench.editors.TextEditor;
+import be.makercafe.apps.makerbench.editors.XMLEditor;
 import be.makercafe.apps.makerbench.resourceview.ResourceTreeItem;
 import de.jensd.fx.glyphs.GlyphsDude;
 import de.jensd.fx.glyphs.materialdesignicons.MaterialDesignIcon;
@@ -31,6 +32,7 @@ import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
@@ -45,6 +47,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TreeView;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -106,6 +109,7 @@ public class Main extends Application {
 		primaryStage.setResizable(true);
 		primaryStage.setTitle("Makerbench");
 		primaryStage.setScene(scene);
+		//primaryStage.getIcons().add(new Image("/path/to/stackoverflow.jpg"));
 		primaryStage.show();
 	}
 
@@ -421,8 +425,10 @@ public class Main extends Application {
 				editor = new JFXScadEditor(text, path);
 			} else if (absPath.endsWith("jfxmill")) {
 				editor = new JFXMillEditor(text, path);
+			} else if (absPath.endsWith("xml") || absPath.endsWith("xsd")) {
+				editor = new XMLEditor(text, path);
 			} else {
-				editor = new TextEditor(text);
+				editor = new TextEditor(text, path);
 			}
 			t = editor.getTab();
 			// Hookup the userdata
