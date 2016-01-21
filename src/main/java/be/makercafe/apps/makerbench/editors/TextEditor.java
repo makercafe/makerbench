@@ -22,11 +22,13 @@ import org.fxmisc.richtext.LineNumberFactory;
 import de.jensd.fx.glyphs.GlyphsDude;
 import de.jensd.fx.glyphs.materialdesignicons.MaterialDesignIcon;
 
+
 public class TextEditor extends Editor {
 
 	private CodeArea caCodeArea;
 
 	private ToolBar toolBar = null;
+
 
 	public TextEditor(String tabText, Path path) {
 		super(tabText);
@@ -104,14 +106,5 @@ public class TextEditor extends Editor {
 		}
 	}
 
-
-
-	public ToolBar getToolBar() {
-		return toolBar;
-	}
-
-	public void setToolbar(ToolBar toolBar) {
-		this.toolBar = toolBar;
-	}
 
 }

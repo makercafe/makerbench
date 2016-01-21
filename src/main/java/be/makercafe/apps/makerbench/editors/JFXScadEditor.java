@@ -127,6 +127,7 @@ public class JFXScadEditor extends Editor {
 		this.caCodeArea.setEditable(true);
 		this.caCodeArea.setParagraphGraphicFactory(LineNumberFactory.get(caCodeArea));
 		this.caCodeArea.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
 		this.caCodeArea.getStylesheets().add(this.getClass().getResource("java-keywords.css").toExternalForm());		
 		this.caCodeArea.richChanges().subscribe(change -> {
 				caCodeArea.setStyleSpans(0, computeHighlighting(caCodeArea.getText()));

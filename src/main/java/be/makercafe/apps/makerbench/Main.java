@@ -106,6 +106,7 @@ public class Main extends Application {
 		Scene scene = new Scene(p, 1024, 800);
 		//scene.getStylesheets().add(this.getClass().getResource("/styles/java-keywords.css").toExternalForm());
 
+
 		primaryStage.setResizable(true);
 		primaryStage.setTitle("Makerbench");
 		primaryStage.setScene(scene);
@@ -451,6 +452,7 @@ public class Main extends Application {
 			GlyphsDude.setIcon(folder, MaterialDesignIcon.FOLDER);
 			System.out.println("Style:" + folder.getGraphic().getStyle());
 			folder.getGraphic().setStyle("-fx-font-family: MaterialDesignIcons; -fx-font-size: 1.2em; -fx-fill: green;");
+
 			parent.getChildren().add(folder);
 			try {
 				List<File> files = Arrays.asList(file.listFiles());
@@ -466,6 +468,7 @@ public class Main extends Application {
 			ResourceTreeItem<String> fileItem = new ResourceTreeItem<>(file.getName(), file.toPath());
 			GlyphsDude.setIcon(fileItem, MaterialDesignIcon.FILE);
 			fileItem.getGraphic().setStyle("-fx-font-family: MaterialDesignIcons; -fx-font-size: 1.2em; -fx-fill: green;");
+
 			parent.getChildren().add(fileItem);
 		}
 		return parent;

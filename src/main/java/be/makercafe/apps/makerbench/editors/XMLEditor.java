@@ -57,6 +57,7 @@ public class XMLEditor extends Editor {
 			this.caCodeArea.setStyleSpans(0, computeHighlighting(newText));
 		});
 		addContextMenu(this.caCodeArea);
+
 		try {
 			this.caCodeArea.replaceText(FileUtils.readFileToString(path.toFile()));
 		} catch (IOException ex) {
