@@ -6,7 +6,7 @@
 package be.makercafe.apps.makerbench.resourceview;
 
 import java.nio.file.Path;
-import javafx.scene.Node;
+
 import javafx.scene.control.TreeItem;
 
 /**

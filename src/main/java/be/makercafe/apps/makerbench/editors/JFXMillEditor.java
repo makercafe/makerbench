@@ -60,6 +60,7 @@ import org.reactfx.EventStream;
 import org.reactfx.EventStreams;
 
 import be.makercafe.apps.makerbench.editors.utils.VFX3DUtil;
+import be.makercafe.apps.makerbench.millcrum.Millcrum;
 import de.jensd.fx.glyphs.GlyphsDude;
 import de.jensd.fx.glyphs.materialdesignicons.MaterialDesignIcon;
 import eu.mihosoft.vrl.v3d.CSG;
@@ -68,7 +69,7 @@ import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import groovy.lang.Script;
 
-public class JFXScadEditor extends Editor {
+public class JFXMillEditor extends Editor {
 
 	private static final String[] KEYWORDS = new String[] { "def", "in", "as",
 			"abstract", "assert", "boolean", "break", "byte", "case", "catch",
@@ -80,23 +81,22 @@ public class JFXScadEditor extends Editor {
 			"super", "switch", "synchronized", "this", "throw", "throws",
 			"transient", "try", "void", "volatile", "while" };
 
-	private static final String KEYWORD_PATTERN = "\\b(" + String.join("|", KEYWORDS) + ")\\b";
-    private static final String PAREN_PATTERN = "\\(|\\)";
-    private static final String BRACE_PATTERN = "\\{|\\}";
-    private static final String BRACKET_PATTERN = "\\[|\\]";
-    private static final String SEMICOLON_PATTERN = "\\;";
-    private static final String STRING_PATTERN = "\"([^\"\\\\]|\\\\.)*\"";
-    private static final String COMMENT_PATTERN = "//[^\n]*" + "|" + "/\\*(.|\\R)*?\\*/";
+	private static final String KEYWORD_PATTERN = "\\b("
+			+ String.join("|", KEYWORDS) + ")\\b";
+	private static final String PAREN_PATTERN = "\\(|\\)";
+	private static final String BRACE_PATTERN = "\\{|\\}";
+	private static final String BRACKET_PATTERN = "\\[|\\]";
+	private static final String SEMICOLON_PATTERN = "\\;";
+	private static final String STRING_PATTERN = "\"([^\"\\\\]|\\\\.)*\"";
+	private static final String COMMENT_PATTERN = "//[^\n]*" + "|"
+			+ "/\\*(.|\\R)*?\\*/";
 
-    private static final Pattern PATTERN = Pattern.compile(
-            "(?<KEYWORD>" + KEYWORD_PATTERN + ")"
-            + "|(?<PAREN>" + PAREN_PATTERN + ")"
-            + "|(?<BRACE>" + BRACE_PATTERN + ")"
-            + "|(?<BRACKET>" + BRACKET_PATTERN + ")"
-            + "|(?<SEMICOLON>" + SEMICOLON_PATTERN + ")"
-            + "|(?<STRING>" + STRING_PATTERN + ")"
-            + "|(?<COMMENT>" + COMMENT_PATTERN + ")"
-    );
+	private static final Pattern PATTERN = Pattern.compile("(?<KEYWORD>"
+			+ KEYWORD_PATTERN + ")" + "|(?<PAREN>" + PAREN_PATTERN + ")"
+			+ "|(?<BRACE>" + BRACE_PATTERN + ")" + "|(?<BRACKET>"
+			+ BRACKET_PATTERN + ")" + "|(?<SEMICOLON>" + SEMICOLON_PATTERN
+			+ ")" + "|(?<STRING>" + STRING_PATTERN + ")" + "|(?<COMMENT>"
+			+ COMMENT_PATTERN + ")");
 
 	private final Group viewGroup;
 
@@ -104,7 +104,7 @@ public class JFXScadEditor extends Editor {
 
 	private boolean autoCompile = false;
 
-	private CSG csgObject;
+	private Millcrum millObject;
 
 	private BorderPane editorContainer;
 
@@ -116,7 +116,7 @@ public class JFXScadEditor extends Editor {
 
 	private ComboBox cbxSourceExamples = null;
 
-	public JFXScadEditor(String tabText, Path path) {
+	public JFXMillEditor(String tabText, Path path) {
 		super(tabText);
 
 		this.viewGroup = new Group();
@@ -125,14 +125,19 @@ public class JFXScadEditor extends Editor {
 
 		this.caCodeArea = new CodeArea("");
 		this.caCodeArea.setEditable(true);
-		this.caCodeArea.setParagraphGraphicFactory(LineNumberFactory.get(caCodeArea));
+		this.caCodeArea.setParagraphGraphicFactory(LineNumberFactory
+				.get(caCodeArea));
 		this.caCodeArea.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		this.caCodeArea.getStylesheets().add(this.getClass().getResource("java-keywords.css").toExternalForm());		
-		this.caCodeArea.richChanges().subscribe(change -> {
-				caCodeArea.setStyleSpans(0, computeHighlighting(caCodeArea.getText()));
-		});
-		
+		this.caCodeArea.getStylesheets().add(
+				this.getClass().getResource("java-keywords.css")
+						.toExternalForm());
+		this.caCodeArea.richChanges().subscribe(
+				change -> {
+					caCodeArea.setStyleSpans(0,
+							computeHighlighting(caCodeArea.getText()));
+				});
 		addContextMenu(this.caCodeArea);
+
 		EventStream<Change<String>> textEvents = EventStreams
 				.changesOf(caCodeArea.textProperty());
 
@@ -143,71 +148,54 @@ public class JFXScadEditor extends Editor {
 					}
 				});
 
-		if (path == null) {
-			this.caCodeArea.replaceText("CSG cube = new Cube(2).toCSG()\n"
-					+ "CSG sphere = new Sphere(1.25).toCSG()\n" + "\n"
-					+ "cube.difference(sphere)");
-		} else {
-			try {
-				this.caCodeArea.replaceText(
-						 FileUtils.readFileToString(path.toFile()));
-			} catch (IOException ex) {
-				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error reading file.",
-						ex);
-			}
-
+		try {
+			this.caCodeArea.replaceText(FileUtils.readFileToString(path
+					.toFile()));
+		} catch (IOException ex) {
+			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
+					"Error reading file.", ex);
 		}
-
-		//editorContainer.setCenter(this.codeArea);
-
-		subScene = new SubScene(viewGroup, 100, 100, true,
-				SceneAntialiasing.BALANCED);
-
-		subScene.widthProperty().bind(viewContainer.widthProperty());
-		subScene.heightProperty().bind(viewContainer.heightProperty());
-
-		PerspectiveCamera subSceneCamera = new PerspectiveCamera(false);
-		subScene.setCamera(subSceneCamera);
-
-		viewContainer.getChildren().add(subScene);
 
 		SplitPane editorPane = new SplitPane(caCodeArea, viewContainer);
 		editorPane.setOrientation(Orientation.HORIZONTAL);
 		BorderPane rootPane = new BorderPane();
 
-		BorderPane pane = (BorderPane) this.getTab().getContent();
 		toolBar = createToolBar();
 		rootPane.setTop(toolBar);
 		rootPane.setCenter(editorPane);
 		this.getTab().setContent(rootPane);
 
 	}
-	
-    private static StyleSpans<Collection<String>> computeHighlighting(String text) {
-        Matcher matcher = PATTERN.matcher(text);
-        int lastKwEnd = 0;
-        StyleSpansBuilder<Collection<String>> spansBuilder
-                = new StyleSpansBuilder<>();
-        while(matcher.find()) {
-            String styleClass =
-                    matcher.group("KEYWORD") != null ? "keyword" :
-                    matcher.group("PAREN") != null ? "paren" :
-                    matcher.group("BRACE") != null ? "brace" :
-                    matcher.group("BRACKET") != null ? "bracket" :
-                    matcher.group("SEMICOLON") != null ? "semicolon" :
-                    matcher.group("STRING") != null ? "string" :
-                    matcher.group("COMMENT") != null ? "comment" :
-                    null; /* never happens */ assert styleClass != null;
-            spansBuilder.add(Collections.emptyList(), matcher.start() - lastKwEnd);
-            spansBuilder.add(Collections.singleton(styleClass), matcher.end() - matcher.start());
-            lastKwEnd = matcher.end();
-        }
-        spansBuilder.add(Collections.emptyList(), text.length() - lastKwEnd);
-        return spansBuilder.create();
-    }
+
+	private static StyleSpans<Collection<String>> computeHighlighting(
+			String text) {
+		Matcher matcher = PATTERN.matcher(text);
+		int lastKwEnd = 0;
+		StyleSpansBuilder<Collection<String>> spansBuilder = new StyleSpansBuilder<>();
+		while (matcher.find()) {
+			String styleClass = matcher.group("KEYWORD") != null ? "keyword"
+					: matcher.group("PAREN") != null ? "paren" : matcher
+							.group("BRACE") != null ? "brace" : matcher
+							.group("BRACKET") != null ? "bracket" : matcher
+							.group("SEMICOLON") != null ? "semicolon" : matcher
+							.group("STRING") != null ? "string" : matcher
+							.group("COMMENT") != null ? "comment" : null; /*
+																		 * never
+																		 * happens
+																		 */
+			assert styleClass != null;
+			spansBuilder.add(Collections.emptyList(), matcher.start()
+					- lastKwEnd);
+			spansBuilder.add(Collections.singleton(styleClass), matcher.end()
+					- matcher.start());
+			lastKwEnd = matcher.end();
+		}
+		spansBuilder.add(Collections.emptyList(), text.length() - lastKwEnd);
+		return spansBuilder.create();
+	}
 
 	private void setCode(String code) {
-	//	this.codeArea.clear();
+		// this.codeArea.clear();
 		this.caCodeArea.replaceText(code);
 
 	}
@@ -218,9 +206,7 @@ public class JFXScadEditor extends Editor {
 
 	private void compile(String code) {
 
-		csgObject = null;
-
-		// clearLog();
+		millObject = null;
 
 		viewGroup.getChildren().clear();
 
@@ -229,8 +215,7 @@ public class JFXScadEditor extends Editor {
 			CompilerConfiguration cc = new CompilerConfiguration();
 
 			cc.addCompilationCustomizers(new ImportCustomizer().addStarImports(
-					"eu.mihosoft.vrl.v3d", "eu.mihosoft.vrl.v3d.samples")
-					.addStaticStars("eu.mihosoft.vrl.v3d.Transform"));
+					"be.makercafe.apps.makerbench.millcrum", "javafx"));
 
 			GroovyShell shell = new GroovyShell(getClass().getClassLoader(),
 					new Binding(), cc);
@@ -239,66 +224,40 @@ public class JFXScadEditor extends Editor {
 
 			Object obj = script.run();
 
-			if (obj instanceof CSG) {
+			if (obj instanceof Millcrum) {
 
-				CSG csg = (CSG) obj;
+				millObject = (Millcrum) obj;
 
-				csgObject = csg;
-
-				MeshContainer meshContainer = csg.toJavaFXMesh();
-
-				final MeshView meshView = meshContainer.getAsMeshViews().get(0);
-
-				setMeshScale(meshContainer, viewContainer.getBoundsInLocal(),
-						meshView);
-
-				PhongMaterial m = new PhongMaterial(Color.GREEN);
-
-				meshView.setCullFace(CullFace.NONE);
-
-				meshView.setMaterial(m);
-
-				viewGroup.layoutXProperty().bind(
-						viewContainer.widthProperty().divide(2));
-				viewGroup.layoutYProperty().bind(
-						viewContainer.heightProperty().divide(2));
-
-				viewContainer.boundsInLocalProperty().addListener(
-						(ov, oldV, newV) -> {
-							setMeshScale(meshContainer, newV, meshView);
-						});
-
-				VFX3DUtil.addMouseBehavior(meshView, viewContainer,
-						MouseButton.PRIMARY);
-
-				viewGroup.getChildren().add(meshView);
+				viewContainer.getChildren().clear();
+				viewContainer.getChildren().add(
+						millObject.getMillCanvas().getCanv());
 
 			} else {
-				Logger.getLogger(this.getClass().getName()).log(Level.INFO, "No CSG object returned");
+				Logger.getLogger(this.getClass().getName()).log(Level.INFO,
+						"No Millcrum object returned");
 			}
 
 		} catch (Throwable ex) {
-			Logger.getLogger(this.getClass().getName()).log(Level.INFO, "Unsuspected xception", ex);
+			Logger.getLogger(this.getClass().getName()).log(Level.INFO,
+					"Unsuspected exception", ex);
 		}
 	}
 
-	private void setMeshScale(MeshContainer meshContainer, Bounds t1,
-			final MeshView meshView) {
-		if (meshContainer != null) {
-			double maxDim = Math.max(
-					meshContainer.getWidth(),
-					Math.max(meshContainer.getHeight(),
-							meshContainer.getDepth()));
-
-			double minContDim = Math.min(t1.getWidth(), t1.getHeight());
-
-			double scale = minContDim / (maxDim * 2);
-
-			meshView.setScaleX(scale);
-			meshView.setScaleY(scale);
-			meshView.setScaleZ(scale);
-		}
-	}
+	// private void setMeshScale(MeshContainer meshContainer, Bounds t1, final
+	// MeshView meshView) {
+	// if (meshContainer != null) {
+	// double maxDim = Math.max(meshContainer.getWidth(),
+	// Math.max(meshContainer.getHeight(), meshContainer.getDepth()));
+	//
+	// double minContDim = Math.min(t1.getWidth(), t1.getHeight());
+	//
+	// double scale = minContDim / (maxDim * 2);
+	//
+	// meshView.setScaleX(scale);
+	// meshView.setScaleY(scale);
+	// meshView.setScaleZ(scale);
+	// }
+	// }
 
 	/**
 	 * Creates the toolBar for the editor.
@@ -316,9 +275,9 @@ public class JFXScadEditor extends Editor {
 		btnSave.setOnAction(this::handleSaveButton);
 
 		Button btnExportSTL = GlyphsDude.createIconButton(
-				MaterialDesignIcon.EXPORT, "Export STL");
+				MaterialDesignIcon.EXPORT, "Export GCODE");
 
-		btnExportSTL.setOnAction(this::handleExportAsStlFile);
+		btnExportSTL.setOnAction(this::handleExportAsGCodeFile);
 
 		Button btnExportPNG = GlyphsDude.createIconButton(
 				MaterialDesignIcon.CAMERA, "Export PNG");
@@ -331,6 +290,7 @@ public class JFXScadEditor extends Editor {
 		ToggleButton btnAutoCompile = GlyphsDude.createIconToggleButton(
 				MaterialDesignIcon.AUTO_FIX, "Automatic run", null,
 				ContentDisplay.LEFT);
+		btnAutoCompile.setOnAction(this::handleAutoCompile);
 		btnAutoCompile.setSelected(false);
 
 		ToggleButton btn3DNav = GlyphsDude.createIconToggleButton(
@@ -339,8 +299,7 @@ public class JFXScadEditor extends Editor {
 		btn3DNav.setSelected(false);
 
 		ComboBox cbxSourceExamples = new ComboBox();
-		cbxSourceExamples.getItems().addAll("BatteryHolder", "BoardMount",
-				"BreadBoardConnector", "ServoMount", "Wheel");
+		cbxSourceExamples.getItems().addAll("TestCut");
 		this.cbxSourceExamples = cbxSourceExamples; // TODO: maybe cleaner way
 													// to do this ?
 
@@ -365,7 +324,8 @@ public class JFXScadEditor extends Editor {
 		try {
 			FileUtils.writeStringToFile(new File(path), caCodeArea.getText());
 		} catch (IOException e) {
-			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Unable to save file.");
+			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
+					"Unable to save file.");
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setTitle("Oeps an error occured");
 			alert.setHeaderText("Cannot save file. There went something wrong writing the file.");
@@ -374,21 +334,22 @@ public class JFXScadEditor extends Editor {
 		}
 	}
 
-	private void handleExportAsStlFile(ActionEvent e) {
+	private void handleExportAsGCodeFile(ActionEvent e) {
 
-		if (csgObject == null) {
+		if (millObject == null) {
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setTitle("Oeps an error occured");
-			alert.setHeaderText("Cannot export STL. There is no geometry !");
-			alert.setContentText("Please verify that your code generates a valid CSG object.");
+			alert.setHeaderText("Cannot export gcode. There is no geometry !");
+			alert.setContentText("Please verify that your code generates a valid millcrum object.");
 			alert.showAndWait();
 			return;
 		}
 
 		FileChooser fileChooser = new FileChooser();
-		fileChooser.setTitle("Export STL File");
+		fileChooser.setTitle("Export GCODE File");
 		fileChooser.getExtensionFilters().add(
-				new FileChooser.ExtensionFilter("STL files (*.stl)", "*.stl"));
+				new FileChooser.ExtensionFilter("GCODE files (*.gcode)",
+						"*.tap"));
 
 		File f = fileChooser.showSaveDialog(null);
 
@@ -398,20 +359,20 @@ public class JFXScadEditor extends Editor {
 
 		String fName = f.getAbsolutePath();
 
-		if (!fName.toLowerCase().endsWith(".stl")) {
-			fName += ".stl";
+		if (!fName.toLowerCase().endsWith(".gcode")) {
+			fName += ".gcode";
 		}
 
 		try {
-			eu.mihosoft.vrl.v3d.FileUtil.write(Paths.get(fName),
-					csgObject.toStlString());
+			millObject.get();
+			FileUtils.write(new File(fName), millObject.getToSaveGcode());
 		} catch (IOException ex) {
 
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null,
 					ex);
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setTitle("Oeps an error occured");
-			alert.setHeaderText("Cannot export STL. There went something wrong writing the file.");
+			alert.setHeaderText("Cannot export gcode. There went something wrong writing the file.");
 			alert.setContentText("Please verify that your file is not read only, is not locked by other user or program, you have enough diskspace.");
 			alert.showAndWait();
 		}
@@ -419,7 +380,7 @@ public class JFXScadEditor extends Editor {
 
 	private void handleExportAsPngFile(ActionEvent e) {
 
-		if (csgObject == null) {
+		if (millObject == null) {
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setTitle("Oeps an error occured");
 			alert.setHeaderText("Cannot export PNG. There is no geometry !");
@@ -500,7 +461,7 @@ public class JFXScadEditor extends Editor {
 					.getSelectionModel().getSelectedItem();
 			String code = IOUtils.toString(
 					this.getClass().getResourceAsStream(
-							exampleSourceCode + ".jfxscad"), "UTF-8");
+							exampleSourceCode + ".jfxmill"), "UTF-8");
 			this.caCodeArea.replaceText(code);
 		} catch (IOException ex) {
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,

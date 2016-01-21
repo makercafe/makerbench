@@ -1,5 +1,7 @@
 package be.makercafe.apps.makerbench;
 
+import org.controlsfx.tools.Platform;
+
 /**
  * Resource manager
  * @author luc
