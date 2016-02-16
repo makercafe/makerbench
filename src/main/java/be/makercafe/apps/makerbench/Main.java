@@ -1,8 +1,20 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+    Copyright 2015 - 2016, Luc De pauw - Makercafe.be
+    This file is part of Makerbench.
+
+    Makerbench is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Makerbench is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Makerbench.  If not, see <http://www.gnu.org/licenses/>.
+*/
 package be.makercafe.apps.makerbench;
 
 import java.io.File;
@@ -21,6 +33,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 
 import be.makercafe.apps.makerbench.editors.Editor;
+import be.makercafe.apps.makerbench.editors.GCodeEditor;
 import be.makercafe.apps.makerbench.editors.JFXScadEditor;
 import be.makercafe.apps.makerbench.editors.JFXMillEditor;
 import be.makercafe.apps.makerbench.editors.TextEditor;
@@ -58,10 +71,11 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+
 /**
  * Main class
  *
- * @author makercafe
+ * @author luc.de.pauw@makercafe.be
  */
 public class Main extends Application {
 
@@ -428,6 +442,8 @@ public class Main extends Application {
 				editor = new JFXMillEditor(text, path);
 			} else if (absPath.endsWith("xml") || absPath.endsWith("xsd")) {
 				editor = new XMLEditor(text, path);
+			} else if (absPath.endsWith("gcode") || absPath.endsWith("tap")) {
+				editor = new GCodeEditor(text, path);
 			} else {
 				editor = new TextEditor(text, path);
 			}

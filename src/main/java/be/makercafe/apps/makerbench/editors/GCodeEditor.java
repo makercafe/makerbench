@@ -17,13 +17,18 @@
 */
 package be.makercafe.apps.makerbench.editors;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,8 +41,10 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Orientation;
+import javafx.geometry.Point3D;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
+import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.SubScene;
@@ -58,10 +65,14 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Material;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.CullFace;
+import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.MeshView;
+import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Scale;
+import javafx.scene.transform.Translate;
 import javafx.stage.FileChooser;
 
 import javax.imageio.ImageIO;
@@ -87,35 +98,38 @@ import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import groovy.lang.Script;
 
-public class JFXScadEditor extends Editor {
+public class GCodeEditor extends Editor {
 
-	private static final String[] KEYWORDS = new String[] { "def", "in", "as",
-			"abstract", "assert", "boolean", "break", "byte", "case", "catch",
-			"char", "class", "const", "continue", "default", "do", "double",
-			"else", "enum", "extends", "final", "finally", "float", "for",
-			"goto", "if", "implements", "import", "instanceof", "int",
-			"interface", "long", "native", "new", "package", "private",
-			"protected", "public", "return", "short", "static", "strictfp",
-			"super", "switch", "synchronized", "this", "throw", "throws",
-			"transient", "try", "void", "volatile", "while" };
-
-	private static final String KEYWORD_PATTERN = "\\b(" + String.join("|", KEYWORDS) + ")\\b";
-    private static final String PAREN_PATTERN = "\\(|\\)";
-    private static final String BRACE_PATTERN = "\\{|\\}";
-    private static final String BRACKET_PATTERN = "\\[|\\]";
-    private static final String SEMICOLON_PATTERN = "\\;";
-    private static final String STRING_PATTERN = "\"([^\"\\\\]|\\\\.)*\"";
-    private static final String COMMENT_PATTERN = "//[^\n]*" + "|" + "/\\*(.|\\R)*?\\*/";
-
-    private static final Pattern PATTERN = Pattern.compile(
-            "(?<KEYWORD>" + KEYWORD_PATTERN + ")"
-            + "|(?<PAREN>" + PAREN_PATTERN + ")"
-            + "|(?<BRACE>" + BRACE_PATTERN + ")"
-            + "|(?<BRACKET>" + BRACKET_PATTERN + ")"
-            + "|(?<SEMICOLON>" + SEMICOLON_PATTERN + ")"
-            + "|(?<STRING>" + STRING_PATTERN + ")"
-            + "|(?<COMMENT>" + COMMENT_PATTERN + ")"
-    );
+	// private static final String[] KEYWORDS = new String[] { "def", "in",
+	// "as",
+	// "abstract", "assert", "boolean", "break", "byte", "case", "catch",
+	// "char", "class", "const", "continue", "default", "do", "double",
+	// "else", "enum", "extends", "final", "finally", "float", "for",
+	// "goto", "if", "implements", "import", "instanceof", "int",
+	// "interface", "long", "native", "new", "package", "private",
+	// "protected", "public", "return", "short", "static", "strictfp",
+	// "super", "switch", "synchronized", "this", "throw", "throws",
+	// "transient", "try", "void", "volatile", "while" };
+	//
+	// private static final String KEYWORD_PATTERN = "\\b(" + String.join("|",
+	// KEYWORDS) + ")\\b";
+	// private static final String PAREN_PATTERN = "\\(|\\)";
+	// private static final String BRACE_PATTERN = "\\{|\\}";
+	// private static final String BRACKET_PATTERN = "\\[|\\]";
+	// private static final String SEMICOLON_PATTERN = "\\;";
+	// private static final String STRING_PATTERN = "\"([^\"\\\\]|\\\\.)*\"";
+	// private static final String COMMENT_PATTERN = "//[^\n]*" + "|" +
+	// "/\\*(.|\\R)*?\\*/";
+	//
+	// private static final Pattern PATTERN = Pattern.compile(
+	// "(?<KEYWORD>" + KEYWORD_PATTERN + ")"
+	// + "|(?<PAREN>" + PAREN_PATTERN + ")"
+	// + "|(?<BRACE>" + BRACE_PATTERN + ")"
+	// + "|(?<BRACKET>" + BRACKET_PATTERN + ")"
+	// + "|(?<SEMICOLON>" + SEMICOLON_PATTERN + ")"
+	// + "|(?<STRING>" + STRING_PATTERN + ")"
+	// + "|(?<COMMENT>" + COMMENT_PATTERN + ")"
+	// );
 
 	private final Group viewGroup;
 
@@ -135,7 +149,21 @@ public class JFXScadEditor extends Editor {
 
 	private ComboBox cbxSourceExamples = null;
 
-	public JFXScadEditor(String tabText, Path path) {
+	private static PhongMaterial MATERIAL_GREEN = new PhongMaterial(Color.GREEN);
+	private static PhongMaterial MATERIAL_RED = new PhongMaterial(Color.RED);
+	private static PhongMaterial MATERIAL_BLUE = new PhongMaterial(Color.BLUE);
+	private static PhongMaterial MATERIAL_YELLOW = new PhongMaterial(
+			Color.YELLOW);
+	private static PhongMaterial MATERIAL_ORANGE = new PhongMaterial(
+			Color.ORANGE);
+	private static PhongMaterial MATERIAL_WHITE = new PhongMaterial(Color.WHITE);
+	private static PhongMaterial MATERIAL_BLACK = new PhongMaterial(Color.BLACK);
+
+	private Map<String, Double> lastLine = new HashMap<>();
+
+	private boolean isRelative = false;
+
+	public GCodeEditor(String tabText, Path path) {
 		super(tabText);
 
 		this.viewGroup = new Group();
@@ -144,14 +172,16 @@ public class JFXScadEditor extends Editor {
 
 		this.caCodeArea = new CodeArea("");
 		this.caCodeArea.setEditable(true);
-		this.caCodeArea.setParagraphGraphicFactory(LineNumberFactory.get(caCodeArea));
+		this.caCodeArea.setParagraphGraphicFactory(LineNumberFactory
+				.get(caCodeArea));
 		this.caCodeArea.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
-		this.caCodeArea.getStylesheets().add(this.getClass().getResource("java-keywords.css").toExternalForm());		
-		this.caCodeArea.richChanges().subscribe(change -> {
-				caCodeArea.setStyleSpans(0, computeHighlighting(caCodeArea.getText()));
-		});
-		
+		// this.caCodeArea.getStylesheets().add(this.getClass().getResource("java-keywords.css").toExternalForm());
+		// this.caCodeArea.richChanges().subscribe(change -> {
+		// caCodeArea.setStyleSpans(0,
+		// computeHighlighting(caCodeArea.getText()));
+		// });
+
 		addContextMenu(this.caCodeArea);
 		EventStream<Change<String>> textEvents = EventStreams
 				.changesOf(caCodeArea.textProperty());
@@ -164,21 +194,19 @@ public class JFXScadEditor extends Editor {
 				});
 
 		if (path == null) {
-			this.caCodeArea.replaceText("CSG cube = new Cube(2).toCSG()\n"
-					+ "CSG sphere = new Sphere(1.25).toCSG()\n" + "\n"
-					+ "cube.difference(sphere)");
+			this.caCodeArea.replaceText("#empty");
 		} else {
 			try {
-				this.caCodeArea.replaceText(
-						 FileUtils.readFileToString(path.toFile()));
+				this.caCodeArea.replaceText(FileUtils.readFileToString(path
+						.toFile()));
 			} catch (IOException ex) {
-				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error reading file.",
-						ex);
+				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
+						"Error reading file.", ex);
 			}
 
 		}
 
-		//editorContainer.setCenter(this.codeArea);
+		// editorContainer.setCenter(this.codeArea);
 
 		subScene = new SubScene(viewGroup, 100, 100, true,
 				SceneAntialiasing.BALANCED);
@@ -202,47 +230,49 @@ public class JFXScadEditor extends Editor {
 		this.getTab().setContent(rootPane);
 		
 		subScene.setOnScroll(new EventHandler<ScrollEvent>() {
-            @Override
-            public void handle(ScrollEvent event) {
-              System.out.println(String.format("deltaX: %.3f deltaY: %.3f",
-                  event.getDeltaX(), 
-                  event.getDeltaY()
-              ));
-              
-              double z = subSceneCamera.getTranslateZ();
-              double newZ = z + event.getDeltaY();
-              subSceneCamera.setTranslateZ(newZ);
-              
-            }
-          });
+	            @Override
+	            public void handle(ScrollEvent event) {
+	              System.out.println(String.format("deltaX: %.3f deltaY: %.3f",
+	                  event.getDeltaX(), 
+	                  event.getDeltaY()
+	              ));
+	              
+	              double z = subSceneCamera.getTranslateZ();
+	              double newZ = z + event.getDeltaY();
+	              subSceneCamera.setTranslateZ(newZ);
+	              
+	            }
+	          });
 
 	}
-	
-    private static StyleSpans<Collection<String>> computeHighlighting(String text) {
-        Matcher matcher = PATTERN.matcher(text);
-        int lastKwEnd = 0;
-        StyleSpansBuilder<Collection<String>> spansBuilder
-                = new StyleSpansBuilder<>();
-        while(matcher.find()) {
-            String styleClass =
-                    matcher.group("KEYWORD") != null ? "keyword" :
-                    matcher.group("PAREN") != null ? "paren" :
-                    matcher.group("BRACE") != null ? "brace" :
-                    matcher.group("BRACKET") != null ? "bracket" :
-                    matcher.group("SEMICOLON") != null ? "semicolon" :
-                    matcher.group("STRING") != null ? "string" :
-                    matcher.group("COMMENT") != null ? "comment" :
-                    null; /* never happens */ assert styleClass != null;
-            spansBuilder.add(Collections.emptyList(), matcher.start() - lastKwEnd);
-            spansBuilder.add(Collections.singleton(styleClass), matcher.end() - matcher.start());
-            lastKwEnd = matcher.end();
-        }
-        spansBuilder.add(Collections.emptyList(), text.length() - lastKwEnd);
-        return spansBuilder.create();
-    }
+
+	// private static StyleSpans<Collection<String>> computeHighlighting(String
+	// text) {
+	// Matcher matcher = PATTERN.matcher(text);
+	// int lastKwEnd = 0;
+	// StyleSpansBuilder<Collection<String>> spansBuilder
+	// = new StyleSpansBuilder<>();
+	// while(matcher.find()) {
+	// String styleClass =
+	// matcher.group("KEYWORD") != null ? "keyword" :
+	// matcher.group("PAREN") != null ? "paren" :
+	// matcher.group("BRACE") != null ? "brace" :
+	// matcher.group("BRACKET") != null ? "bracket" :
+	// matcher.group("SEMICOLON") != null ? "semicolon" :
+	// matcher.group("STRING") != null ? "string" :
+	// matcher.group("COMMENT") != null ? "comment" :
+	// null; /* never happens */ assert styleClass != null;
+	// spansBuilder.add(Collections.emptyList(), matcher.start() - lastKwEnd);
+	// spansBuilder.add(Collections.singleton(styleClass), matcher.end() -
+	// matcher.start());
+	// lastKwEnd = matcher.end();
+	// }
+	// spansBuilder.add(Collections.emptyList(), text.length() - lastKwEnd);
+	// return spansBuilder.create();
+	// }
 
 	private void setCode(String code) {
-	//	this.codeArea.clear();
+		// this.codeArea.clear();
 		this.caCodeArea.replaceText(code);
 
 	}
@@ -261,61 +291,26 @@ public class JFXScadEditor extends Editor {
 
 		try {
 
-			CompilerConfiguration cc = new CompilerConfiguration();
-
-			cc.addCompilationCustomizers(new ImportCustomizer().addStarImports(
-					"eu.mihosoft.vrl.v3d", "eu.mihosoft.vrl.v3d.samples")
-					.addStaticStars("eu.mihosoft.vrl.v3d.Transform"));
-
-			GroovyShell shell = new GroovyShell(getClass().getClassLoader(),
-					new Binding(), cc);
-
-			Script script = shell.parse(code);
-
-			Object obj = script.run();
-
-			if (obj instanceof CSG) {
-
-				CSG csg = (CSG) obj;
-
-				csgObject = csg;
-				
-				//Plane plane = new Plane();
-
-				MeshContainer meshContainer = csg.toJavaFXMesh();
-
-				final MeshView meshView = meshContainer.getAsMeshViews().get(0);
-
-				setMeshScale(meshContainer, viewContainer.getBoundsInLocal(),
-						meshView);
-
-				PhongMaterial m = new PhongMaterial(Color.GREEN);
-
-				meshView.setCullFace(CullFace.NONE);
-
-				meshView.setMaterial(m);
+			parseGCode(caCodeArea.getText(), viewGroup);
 
 				viewGroup.layoutXProperty().bind(
 						viewContainer.widthProperty().divide(2));
 				viewGroup.layoutYProperty().bind(
 						viewContainer.heightProperty().divide(2));
 
-				viewContainer.boundsInLocalProperty().addListener(
-						(ov, oldV, newV) -> {
-							setMeshScale(meshContainer, newV, meshView);
-						});
+//				viewContainer.boundsInLocalProperty().addListener(
+//						(ov, oldV, newV) -> {
+//							setMeshScale(meshContainer, newV, meshView);
+//						});
+//
+				VFX3DUtil.addMouseBehavior(viewGroup, viewContainer,
+					MouseButton.PRIMARY);
 
-				VFX3DUtil.addMouseBehavior(meshView, viewContainer,
-						MouseButton.PRIMARY);
 
-				viewGroup.getChildren().add(meshView);
-
-			} else {
-				Logger.getLogger(this.getClass().getName()).log(Level.INFO, "No CSG object returned");
-			}
 
 		} catch (Throwable ex) {
-			Logger.getLogger(this.getClass().getName()).log(Level.INFO, "Unsuspected xception", ex);
+			Logger.getLogger(this.getClass().getName()).log(Level.INFO,
+					"Unsuspected xception", ex);
 		}
 	}
 
@@ -402,7 +397,8 @@ public class JFXScadEditor extends Editor {
 		try {
 			FileUtils.writeStringToFile(new File(path), caCodeArea.getText());
 		} catch (IOException e) {
-			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Unable to save file.");
+			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
+					"Unable to save file.");
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setTitle("Oeps an error occured");
 			alert.setHeaderText("Cannot save file. There went something wrong writing the file.");
@@ -543,6 +539,247 @@ public class JFXScadEditor extends Editor {
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE,
 					"Unable to load example source code: " + exampleSourceCode,
 					ex);
+		}
+	}
+
+	/**
+	 * Draws a line in 3D between 2 3D points on the given group.
+	 * 
+	 * @param origin
+	 *            Origin point
+	 * @param target
+	 *            Target point
+	 * @return 3D line (cylinder) between to points
+	 */
+	private Cylinder drawLine3D(Group group, Point3D origin, Point3D target,
+			Material color) {
+		if (color == null) {
+			color = MATERIAL_BLACK; // default to orange
+		}
+		Point3D yAxis = new Point3D(0, 1, 0);
+		Point3D diff = target.subtract(origin);
+		double height = diff.magnitude();
+
+		Point3D mid = target.midpoint(origin);
+		Translate moveToMidpoint = new Translate(mid.getX(), mid.getY(),
+				mid.getZ());
+
+		Point3D axisOfRotation = diff.crossProduct(yAxis);
+		double angle = Math.acos(diff.normalize().dotProduct(yAxis));
+		Rotate rotateAroundCenter = new Rotate(-Math.toDegrees(angle),
+				axisOfRotation);
+
+		Cylinder line = new Cylinder(1, height);
+		line.setMaterial(color);
+
+		line.getTransforms().addAll(moveToMidpoint, rotateAroundCenter);
+
+		if (group != null) {
+			group.getChildren().add(line);
+		}
+
+		return line;
+	}
+
+	/**
+	 * Draws the axes
+	 * 
+	 * @param group
+	 * @param distance
+	 */
+	private void drawAxes(Group group, long distance) {
+		// TODO: add naming to axes ?
+		drawLine3D(group, new Point3D(0.0, 0.0, 0.0), new Point3D(distance,
+				0.0, 0.0), MATERIAL_YELLOW);
+		drawLine3D(group, new Point3D(0.0, 0.0, 0.0), new Point3D(0.0,
+				distance, 0.0), MATERIAL_ORANGE);
+		drawLine3D(group, new Point3D(0.0, 0.0, 0.0), new Point3D(0.0, 0.0,
+				distance), MATERIAL_BLUE);
+	}
+
+	/**
+	 * Return absolute vector
+	 * 
+	 * @param v1
+	 * @param v2
+	 * @return
+	 */
+	private double absolute(double v1, double v2) {
+		if (!isRelative) {
+			return v2;
+		} else {
+			return v1 + v2;
+		}
+	}
+
+	/**
+	 * Return relative vector
+	 * 
+	 * @param v1
+	 * @param v2
+	 * @return
+	 */
+	private double delta(double v1, double v2) {
+		if (isRelative) {
+			return v2;
+		} else {
+			return v2 - v1;
+		}
+	}
+
+	/**
+	 * Parses a line of gcode
+	 * 
+	 * @param text
+	 * @param lineNumber
+	 * @param group
+	 */
+	private void parseGCodeline(String text, int lineNumber, Group group) {
+		String textLine = text.replaceAll(";.*$", "").trim(); // remove comments
+																// and
+																// withespace
+		Map<String, Double> args = new HashMap<String, Double>();
+		Map<String, Double> newLine = new HashMap<String, Double>();
+		if (!textLine.isEmpty()) {
+			String[] tokens = textLine.split(" ");
+			String cmd = tokens[0].toLowerCase();
+			for (int i = 1; i < tokens.length; i++) {
+				args.put(tokens[i].substring(0, 1).toLowerCase(),
+						Double.valueOf(tokens[i].substring(1)));
+			}
+			if (cmd.equals("g0")) {
+				if (args.containsKey("x")) {
+					newLine.put("x",
+							absolute(lastLine.get("x"), args.get("x")));
+				} else {
+					newLine.put("x", lastLine.get("x"));
+				}
+				if (args.containsKey("y")) {
+					newLine.put("y",
+							absolute(lastLine.get("y"), args.get("y")));
+				} else {
+					newLine.put("y", lastLine.get("y"));
+				}
+				if (args.containsKey("z")) {
+					newLine.put("z",
+							absolute(lastLine.get("z"), args.get("z")));
+				} else {
+					newLine.put("z", lastLine.get("z"));
+				}
+				if (args.containsKey("e")) {
+					newLine.put("e",
+							absolute(lastLine.get("e"), args.get("e")));
+				} else {
+					newLine.put("e", lastLine.get("e"));
+				}
+				if (args.containsKey("f")) {
+					newLine.put("f",
+							absolute(lastLine.get("f"), args.get("f")));
+				} else {
+					newLine.put("f", lastLine.get("f"));
+				}
+				newLine.put("init", 0.0);
+				if (lastLine.containsKey("init")) {
+					drawLine3D(group,
+							new Point3D(lastLine.get("x"), lastLine.get("y"),
+									lastLine.get("z")),
+							new Point3D(newLine.get("x"), newLine.get("y"),
+									newLine.get("z")), MATERIAL_GREEN);
+				}
+				lastLine.clear();
+				lastLine.putAll(newLine);
+			} else if (cmd.equals("g1")) {
+				if (args.containsKey("x")) {
+					newLine.put("x",
+							absolute(lastLine.get("x"), args.get("x")));
+				} else {
+					newLine.put("x", lastLine.get("x"));
+				}
+				if (args.containsKey("y")) {
+					newLine.put("y",
+							absolute(lastLine.get("y"), args.get("y")));
+				} else {
+					newLine.put("y", lastLine.get("y"));
+				}
+				if (args.containsKey("z")) {
+					newLine.put("z",
+							absolute(lastLine.get("z"), args.get("z")));
+				} else {
+					newLine.put("z", lastLine.get("z"));
+				}
+				if (args.containsKey("e")) {
+					newLine.put("e",
+							absolute(lastLine.get("e"), args.get("e")));
+				} else {
+					newLine.put("e", lastLine.get("e"));
+				}
+				if (args.containsKey("f")) {
+					newLine.put("f",
+							absolute(lastLine.get("f"), args.get("f")));
+				} else {
+					newLine.put("f", lastLine.get("f"));
+				}
+				newLine.put("init", 0.0);
+				if (lastLine.containsKey("init")) {
+					drawLine3D(group,
+							new Point3D(lastLine.get("x"), lastLine.get("y"),
+									lastLine.get("z")),
+							new Point3D(newLine.get("x"), newLine.get("y"),
+									newLine.get("z")), MATERIAL_RED);
+				}
+				lastLine.clear();
+				lastLine.putAll(newLine);
+			} else if (cmd.equals("g99")) {
+				this.isRelative = false;
+			} else if (cmd.equals("g91")) {
+				this.isRelative = true;
+			} else if (cmd.equals("g20")) {
+				// set unit to inches
+			} else if (cmd.equals("g21")) {
+				// set unit to mm
+			}
+		}
+	}
+
+	/**
+	 * Parses GCode text
+	 * @param text
+	 * @param group
+	 */
+	private void parseGCode(String text, Group group) {
+		//TODO: this code needs some refactoring
+		lastLine.clear();
+		lastLine.put("x", 0.0);
+		lastLine.put("y", 0.0);
+		lastLine.put("z", 0.0);
+		lastLine.put("e", 0.0);
+		lastLine.put("f", 0.0);
+
+		group.getChildren().clear();
+		drawAxes(group, 100L);
+		InputStream is = new ByteArrayInputStream(text.getBytes());
+
+		// read it with BufferedReader
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+		String line;
+		try {
+			while ((line = br.readLine()) != null) {
+				//System.out.println(line);
+				parseGCodeline(line, 0, group);
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			try {
+				if(br != null){
+					br.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 
