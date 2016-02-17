@@ -53,9 +53,9 @@
 	</build>
 	<dependencies>
 		<dependency>
-			<groupId>eu.mihosoft.vrl</groupId>
+			<groupId>eu.mihosoft.vrl.jcsg</groupId>
 			<artifactId>jcsg</artifactId>
-			<version>1.0.0</version>
+			<version>0.3.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.codehaus.groovy</groupId>
